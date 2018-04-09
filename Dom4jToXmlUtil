@@ -1,0 +1,132 @@
+package com.jiuzhou.utils;
+import java.io.*;
+import java.lang.reflect.Field;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import org.dom4j.Document;
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+import org.dom4j.io.OutputFormat;
+import org.dom4j.io.XMLWriter;
+
+import javax.servlet.http.HttpServletResponse;
+
+public class Dom4jToXmlUtil {
+
+    /**
+     * 写入xml
+     * @param list   要保存的集合数据
+     * @param path   临时存放路径
+     */
+    public static void writeXml(List list,Class elementClass, String path, String fileName) {
+        int flag = 1;
+
+        // 生成一个Dom树
+        Document document = DocumentHelper.createDocument();
+        // 增加根节点
+        Element root = document.addElement(elementClass.getSimpleName()+"s");
+        // 循环添加Student节点
+        for (Object obj : list) {
+            Element stuElement = root.addElement(elementClass.getSimpleName());
+            try {
+                //获取Person对象的所有属性
+                Class per = elementClass.getSuperclass();
+                Field fieldsPerson[] = per.getDeclaredFields();
+                for (Field field : fieldsPerson) {
+                    field.setAccessible(true);
+                    //System.out.println("属性名："+field.getName()+"，值："+field.get(obj));
+                    // 给Student节点中添加Student的子节点
+                    stuElement.addElement(field.getName()).setText(field.get(obj).toString());
+                }
+                //获取student对象的所有属性
+
+                Field fields[]=elementClass.getDeclaredFields();
+                for (Field field : fields) {
+                    field.setAccessible(true);
+                    //System.out.println("属性名："+field.getName()+"，值："+field.get(obj));
+                    // 添加子节点
+                    Element e = stuElement.addElement(field.getName());
+                    //空值处理及id处理
+                    if(field.get(obj) != null && !"".equals(field.get(obj).toString())){
+                        if(field.getName().equals("id")){
+                            e.setText(String.valueOf(flag));
+                            flag ++;
+                        }else{
+                                e.setText(field.get(obj).toString());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        // 将xml写入文件（输出流）
+        try {
+            //自动换行格式
+            OutputFormat format = OutputFormat.createPrettyPrint();
+            //设置编码，默认ISO8859-1
+            format.setEncoding("UTF-8");
+            XMLWriter xmlWriter = new XMLWriter(new FileOutputStream(path + "/" +fileName),format);
+
+            //取消换行
+            //XMLWriter xmlWriter = new XMLWriter(new FileOutputStream(path + "/" +fileName));
+
+            xmlWriter.write(document);
+            xmlWriter.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * 导出文件方法
+     */
+    public static void exportFile(HttpServletResponse response, String realPath, String fileName) {
+        if (fileName != null) {
+            //设置文件路径
+            File file = new File(realPath , fileName);
+            if (file.exists()) {
+                response.setCharacterEncoding("UTF-8");
+                response.setContentType("application/octet-stream; charset=UTF-8");
+                // 设置强制下载不打开
+                response.setContentType("application/force-download");
+                // 设置文件名
+                response.addHeader("Content-Disposition", "attachment;fileName=" + fileName);
+                byte[] buffer = new byte[2048];
+                FileInputStream fis = null;
+                BufferedInputStream bis = null;
+                try {
+                    fis = new FileInputStream(file);
+                    bis = new BufferedInputStream(fis);
+                    OutputStream os = response.getOutputStream();
+                    int read;
+                    while ((read = bis.read(buffer)) != -1) {
+                        os.write(buffer, 0, read);
+                    }
+                    os.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    if (bis != null) {
+                        try {
+                            bis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (fis != null) {
+                        try {
+                            fis.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+}
