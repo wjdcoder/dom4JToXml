@@ -35,7 +35,7 @@ public class ExportXmlController {
             Date eTime = new SimpleDateFormat("yyyy-MM-dd").parse(endTime);
             long day = (eTime.getTime()-sTime.getTime())/(24*60*60*1000);
 
-            //临时路径
+            //创建临时路径
             String realPath = FileUtils.getRealPath("temp") + (new Date()).getTime();//加时间搓，使用完后删除路径
             FileUtils.judeDirExists(new File(realPath));
             String fileName = "";
@@ -48,9 +48,11 @@ public class ExportXmlController {
             for(int i = 0; i <= day; i++){
                 if(i > 0){
                     calendar.setTime(tempTime);
-                    calendar.add(calendar.DATE,1);//把日期往后增加一天.整数往后推,负数往前移动
+                    //把日期往后增加一天.整数往后推,负数往前移动
+                    calendar.add(calendar.DATE,1);
                     tempTime = calendar.getTime();
                 }
+                //加载导出xml所使用的数据
                 List<RatingEventWatch> list = exportXmlService.getEventWatchDataByDate(tempTime);
                 if (list != null && list.size() > 0) {
                     fileName =  RatingEventWatch.class.getSimpleName() +"s_" + format.format(tempTime) + ".xml";
@@ -64,7 +66,6 @@ public class ExportXmlController {
             ZipUtils.zipFiles(filesPath, new File(realPath + "/" + zipName));
             //导出文件流
             Dom4jToXmlUtil.exportFile(response, realPath, zipName);
-
             //删除临时路径
             FileUtils.dropDirExists(realPath);
         }catch (Exception e){
