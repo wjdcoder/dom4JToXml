@@ -1,0 +1,149 @@
+package com.jiuzhou.utils;
+
+import java.io.*;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.zip.ZipFile;
+
+import org.apache.tools.zip.ZipEntry;
+import org.apache.tools.zip.ZipOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+public class ZipUtils {
+    private static final Logger log = LoggerFactory.getLogger(ZipUtils.class);
+
+    private ZipUtils(){};
+    /**
+     * 创建ZIP文件
+     * @param sourcePath 文件或文件夹路径
+     * @param zipPath 生成的zip文件存在路径（包括文件名）
+     */
+    public static void createZip(String sourcePath, String zipPath) {
+        FileOutputStream fos = null;
+        ZipOutputStream zos = null;
+        try {
+            fos = new FileOutputStream(zipPath);
+            zos = new ZipOutputStream(fos);
+            writeZip(new File(sourcePath), "", zos);
+        } catch (FileNotFoundException e) {
+            log.error("创建ZIP文件失败",e);
+        } finally {
+            try {
+                if (zos != null) {
+                    zos.close();
+                }
+            } catch (IOException e) {
+                log.error("创建ZIP文件失败",e);
+            }
+
+        }
+    }
+
+    private static void writeZip(File file, String parentPath, ZipOutputStream zos) {
+        if(file.exists()){
+            //处理文件夹
+            if(file.isDirectory()){
+                parentPath+=file.getName()+File.separator;
+                File [] files=file.listFiles();
+                for(File f:files){
+                    writeZip(f, parentPath, zos);
+                }
+            }else{
+                FileInputStream fis=null;
+                DataInputStream dis=null;
+                try {
+                    fis=new FileInputStream(file);
+                    dis=new DataInputStream(new BufferedInputStream(fis));
+                    ZipEntry ze = new ZipEntry(parentPath + file.getName());
+                    zos.putNextEntry(ze);
+                    //添加编码，如果不添加，当文件以中文命名的情况下，会出现乱码
+                    // ZipOutputStream的包一定是apache的ant.jar包。JDK也提供了打压缩包，但是不能设置编码
+                    zos.setEncoding("GBK");
+                    byte [] content=new byte[1024];
+                    int len;
+                    while((len=fis.read(content))!=-1){
+                        zos.write(content,0,len);
+                        zos.flush();
+                    }
+                } catch (FileNotFoundException e) {
+                    log.error("创建ZIP文件失败",e);
+                } catch (IOException e) {
+                    log.error("创建ZIP文件失败",e);
+                }finally{
+                    try {
+                        if(dis!=null){
+                            dis.close();
+                        }
+                    }catch(IOException e){
+                        log.error("创建ZIP文件失败",e);
+                    }
+                }
+            }
+        }
+    }
+    public static void main(String[] args) {
+        //测试把F盘下的所有文件打包压缩成sql.zip文件放在F盘根目录下
+        ZipUtils.createZip("F:/", "F:/sql.zip");
+
+    }
+
+
+    /**
+     * @param filesPath  待压缩文件路径
+     * @param zipfile 压缩文件路径
+     */
+    public static void zipFiles(List<String> filesPath, File zipfile){
+        File[] srcfile = new File[filesPath.size()];
+        for (int i = 0; i < filesPath.size(); i++) {
+            File f1 = new File(filesPath.get(i));
+            srcfile[i] = f1;
+        }
+
+        byte[] buf=new byte[1024];
+        try {
+            //ZipOutputStream类：完成文件或文件夹的压缩
+            ZipOutputStream out=new ZipOutputStream(new FileOutputStream(zipfile));
+            for(int i=0;i<srcfile.length;i++){
+                FileInputStream in=new FileInputStream(srcfile[i]);
+                out.putNextEntry(new ZipEntry(srcfile[i].getName()));
+                int len;
+                while((len=in.read(buf))>0){
+                    out.write(buf,0,len);
+                }
+                out.closeEntry();
+                in.close();
+            }
+            out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    /**
+     * 功能:解压缩
+     * @param zipfile：需要解压缩的文件
+     * @param descDir：解压后的目标目录
+     */
+    public static void unZipFiles(File zipfile,String descDir){
+        try {
+            ZipFile zf=new ZipFile(zipfile);
+            for(Enumeration entries = zf.entries(); entries.hasMoreElements();){
+                ZipEntry entry=(ZipEntry) entries.nextElement();
+                String zipEntryName=entry.getName();
+                InputStream in=zf.getInputStream(entry);
+                OutputStream out=new FileOutputStream(descDir+zipEntryName);
+                byte[] buf1=new byte[1024];
+                int len;
+                while((len=in.read(buf1))>0){
+                    out.write(buf1,0,len);
+                }
+                in.close();
+                out.close();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+}
