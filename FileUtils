@@ -1,0 +1,179 @@
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.ClassUtils;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+public class FileUtils {
+    
+    private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
+    // tomcat启动
+    private final static String WEBAPPS = "WEB-INF";
+    // Application启动
+    private final static String REALPATH = "src/main/webapp/";
+    private final static String APP_TARGET = "target";
+    /**
+     * 获得项目绝对路径
+     * */
+    public static String getRealPath(String path){
+        String realPath = "";
+        int index = 0;
+        realPath = ClassUtils.getDefaultClassLoader().getResource("").getPath();
+
+        index = realPath.indexOf(WEBAPPS);
+		// tomcat启动
+        if (index > 0) {
+            // linux or windows
+            String osName = System.getProperties().getProperty("os.name");
+            logger.debug(osName);
+            if (osName != null && osName.replaceAll("\\d+","").toLowerCase().indexOf("linux") > -1) {
+                realPath = "/" + realPath.substring(1, realPath.lastIndexOf(WEBAPPS)) + path;;
+            } else {
+                realPath = realPath.substring(1, realPath.lastIndexOf(WEBAPPS)) + path;;
+            }
+            
+        } else {
+            // Application启动
+            realPath = realPath.substring(1, realPath.lastIndexOf(APP_TARGET)) + REALPATH + path;
+        }
+        logger.debug(realPath);
+        return realPath;
+    }
+    
+    /**
+     * 将数据写入对应的文件
+     * @param date 数据字符串
+     * @param path 写入文件路径
+     * */
+    public static void writeDate(String date, String path){
+        FileOutputStream fos = null;
+        logger.debug(path);
+        File f = new File(path);
+        try {
+            if (f.exists()) {
+                f.delete();
+            }
+            f.createNewFile();
+            byte[] bytes = date.getBytes("utf-8");
+            fos = new FileOutputStream(f, true);
+            fos.write(bytes, 0, bytes.length);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (null != fos) {
+                    fos.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    // 判断文件是否存在，不存在则创建
+    public static void judeFileExists(File file) {
+
+        if (file.exists()) {
+            //System.out.println("file exists");
+        } else {
+            //System.out.println("file not exists, create it ...");
+            try {
+                file.createNewFile();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    // 判断文件夹是否存在，不存在则创建
+    public static void judeDirExists(File file) {
+
+        if (file.exists()) {
+            if (file.isDirectory()) {
+                //System.out.println("dir exists");
+            } else {
+                //System.out.println("the same name file exists, can not create dir");
+            }
+        } else {
+            //System.out.println("dir not exists, create it ...");
+            file.mkdir();
+        }
+
+    }
+
+    // 判断文件夹是否存在，存在则删除
+    public static boolean dropDirExists(String sPath) {
+        boolean flag = false;
+        File file = new File(sPath);
+        // 判断目录或文件是否存在
+        if (!file.exists()) {  // 不存在返回 false
+            return flag;
+        } else {
+            // 判断是否为文件
+            if (file.isFile()) {  // 为文件时调用删除文件方法
+                return deleteFile(sPath);
+            } else {  // 为目录时调用删除目录方法
+                return deleteDirectory(sPath);
+            }
+        }
+    }
+
+    /**
+     * 删除单个文件
+     * @param   sPath 被删除文件path
+     * @return 删除成功返回true，否则返回false
+     */
+    public static boolean deleteFile(String sPath) {
+        boolean flag = false;
+        File file = new File(sPath);
+        // 路径为文件且不为空则进行删除
+        if (file.isFile() && file.exists()) {
+            file.delete();
+            flag = true;
+        }
+        return flag;
+    }
+
+    /**
+     * 删除目录以及目录下的文件
+     * @param   sPath 被删除目录的路径
+     * @return  目录删除成功返回true，否则返回false
+     */
+    public static boolean deleteDirectory(String sPath) {
+        //如果sPath不以文件分隔符结尾，自动添加文件分隔符
+        if (!sPath.endsWith(File.separator)) {
+            sPath = sPath + File.separator;
+        }
+        File dirFile = new File(sPath);
+        //如果dir对应的文件不存在，或者不是一个目录，则退出
+        if (!dirFile.exists() || !dirFile.isDirectory()) {
+            return false;
+        }
+        boolean flag = true;
+        //删除文件夹下的所有文件(包括子目录)
+        File[] files = dirFile.listFiles();
+        for (int i = 0; i < files.length; i++) {
+            //删除子文件
+            if (files[i].isFile()) {
+                flag = deleteFile(files[i].getAbsolutePath());
+                if (!flag) break;
+            } //删除子目录
+            else {
+                flag = deleteDirectory(files[i].getAbsolutePath());
+                if (!flag) break;
+            }
+        }
+        if (!flag) return false;
+        //删除当前目录
+        if (dirFile.delete()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+}
